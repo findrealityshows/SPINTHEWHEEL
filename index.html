@@ -145,7 +145,6 @@
 
 <script>
 (() => {
-  // Elements
   const loginScreen = document.getElementById('loginScreen');
   const mainApp = document.getElementById('mainApp');
   const usernameInput = document.getElementById('usernameInput');
@@ -160,17 +159,14 @@
   const resultMessage = document.getElementById('resultMessage');
   const logoutBtn = document.getElementById('logoutBtn');
 
-  // Wheel prizes
   const prizes = ['₹100', '₹250', '₹0', '₹500', 'Try Again', '₹1000'];
   const sliceCount = prizes.length;
   const sliceDeg = 360 / sliceCount;
 
-  // State
   let currentUser = null;
   let spinning = false;
   let withdrawInterval = null;
 
-  // --- LocalStorage helpers ---
   function saveUsers(users) {
     localStorage.setItem('spinwin_users', JSON.stringify(users));
   }
@@ -185,7 +181,6 @@
     return localStorage.getItem('spinwin_currentUser');
   }
 
-  // --- User / wallet functions ---
   function getWallet(user) {
     const users = loadUsers();
     return users[user]?.balance || 0;
@@ -197,7 +192,6 @@
     saveUsers(users);
   }
 
-  // --- UI update ---
   function updateBalanceUI() {
     balanceSpan.textContent = getWallet(currentUser);
   }
@@ -218,7 +212,7 @@
     spinBtn.disabled = false;
   }
 
-  // --- Login/Register ---
+  // Login or Register
   loginBtn.onclick = () => {
     const name = usernameInput.value.trim();
     if (!name) {
@@ -227,7 +221,6 @@
     }
     let users = loadUsers();
     if (!users[name]) {
-      // Register new user with 0 balance
       users[name] = {balance: 0};
       saveUsers(users);
       loginMessage.textContent = 'New account created!';
@@ -242,17 +235,15 @@
     }, 600);
   };
 
-  // --- Add Cash ---
   addCashBtn.onclick = () => {
     let wallet = getWallet(currentUser);
-    const amount = Math.floor(Math.random() * 1000) + 500; // 500 to 1499
+    const amount = Math.floor(Math.random() * 4801) + 200; // 200 to 5000
     wallet += amount;
     setWallet(currentUser, wallet);
     updateBalanceUI();
     resultMessage.textContent = `₹${amount} added to your wallet!`;
   };
 
-  // --- Spin Wheel Setup ---
   function createWheel() {
     wheel.innerHTML = '';
     for (let i = 0; i < sliceCount; i++) {
@@ -265,14 +256,12 @@
     }
   }
 
-  // --- Spin Wheel ---
   spinBtn.onclick = () => {
     if (spinning) return;
     spinning = true;
     resultMessage.textContent = '';
     spinBtn.disabled = true;
 
-    // Spin degrees: 5 full spins + random slice offset
     const spins = 5;
     const randSlice = Math.floor(Math.random() * sliceCount);
     const finalDegree = spins * 360 + randSlice * sliceDeg + sliceDeg / 2;
@@ -303,6 +292,45 @@
     }, 4000);
   };
 
-  // --- Withdrawal Feed ---
-  const feedUsers = ['Amit', 'Sneha', 'Ravi', 'Priya', 'Karan', 'Neha', 'Rahul
-  
+  const feedUsers = ['Amit', 'Sneha', 'Ravi', 'Priya', 'Karan', 'Neha', 'Rahul', 'Simran', 'Raj', 'Anita'];
+
+  function randomWithdraw() {
+    const user = feedUsers[Math.floor(Math.random() * feedUsers.length)];
+    const amount = Math.floor(Math.random() * 4801) + 200; // 200 to 5000
+    return `${user} withdrew ₹${amount}`;
+  }
+
+  function startWithdrawFeed() {
+    withdrawFeed.textContent = '';
+    if (withdrawInterval) clearInterval(withdrawInterval);
+    withdrawInterval = setInterval(() => {
+      const newText = randomWithdraw();
+      withdrawFeed.textContent = newText;
+    }, 3000);
+  }
+
+  logoutBtn.onclick = () => {
+    currentUser = null;
+    localStorage.removeItem('spinwin_currentUser');
+    if (withdrawInterval) clearInterval(withdrawInterval);
+    showLogin();
+  };
+
+  function init() {
+    createWheel();
+    const savedUser = loadCurrentUser();
+    if (savedUser) {
+      currentUser = savedUser;
+      showMain();
+      startWithdrawFeed();
+    } else {
+      showLogin();
+    }
+  }
+
+  init();
+})();
+</script>
+
+</body>
+</html>
