@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Spin & Earn</title>
+  <title>Spin & Win</title>
   <style>
     body {
       margin: 0;
@@ -37,17 +37,16 @@
       height: 100%;
       transition: transform 4s cubic-bezier(0.33, 1, 0.68, 1);
     }
-    .wheel div {
+    .wheel-slice {
       position: absolute;
       width: 50%;
       height: 50%;
-      background: red;
-      color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
       transform-origin: 100% 100%;
       clip-path: polygon(0 0, 100% 0, 100% 100%);
+      color: #fff;
     }
     .pointer {
       width: 0;
@@ -61,7 +60,7 @@
       z-index: 10;
     }
     #withdrawFeed {
-      height: 60px;
+      height: 40px;
       overflow: hidden;
       background: #222;
       padding: 10px;
@@ -88,7 +87,7 @@
   <div id="wallet">Wallet Balance: ₹<span id="balance">0</span></div>
   <button onclick="addCash()">Add Cash</button>
 
-  <div id="withdrawFeed"></div>
+  <div id="withdrawFeed">Loading live withdrawal feed...</div>
 
   <div class="wheel-container">
     <div class="pointer"></div>
@@ -106,9 +105,10 @@
   let spinning = false;
   let balance = 0;
 
-  // Generate wheel slices
+  // Create wheel slices
   prizes.forEach((prize, i) => {
     const slice = document.createElement('div');
+    slice.className = 'wheel-slice';
     slice.style.transform = `rotate(${i * sliceDeg}deg)`;
     slice.style.background = i % 2 === 0 ? '#E91E63' : '#3F51B5';
     slice.innerText = prize;
@@ -117,7 +117,7 @@
 
   function login() {
     const name = document.getElementById('username').value.trim();
-    if (!name) return alert('Enter your name to continue.');
+    if (!name) return alert('Please enter your name.');
     document.getElementById('userDisplay').innerText = name;
     document.getElementById('loginScreen').classList.remove('visible');
     document.getElementById('mainApp').classList.add('visible');
@@ -138,11 +138,12 @@
       if (result.startsWith('₹')) {
         const amount = parseInt(result.replace(/[^\d]/g, ''));
         balance += amount;
-        updateBalance();
         alert('You won: ' + result);
       } else {
         alert(result);
       }
+
+      updateBalance();
       spinning = false;
     }, 4500);
   }
@@ -160,13 +161,12 @@
 
   function startWithdrawFeed() {
     const feed = document.getElementById('withdrawFeed');
-    const names = ['Amit', 'Sneha', 'Ravi', 'Priya', 'Karan', 'Neha', 'Rahul', 'Simran', 'Deepak'];
-    
+    const names = ['Amit', Sneha', 'Ravi', 'Priya', 'Karan', 'Neha', 'Rahul', 'Simran', 'Deepak'];
+
     setInterval(() => {
       const randomName = names[Math.floor(Math.random() * names.length)];
       const amount = Math.floor(Math.random() * 4800) + 200;
-      const line = `${randomName} withdrew ₹${amount}`;
-      feed.innerHTML = line;
+      feed.innerText = `${randomName} withdrew ₹${amount}`;
     }, 3000);
   }
 </script>
