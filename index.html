@@ -1,28 +1,308 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Spin & Win</title>
-  <style>
-    body { background: black; color: white; font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
-    #loginScreen { display: block; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Spin & Win Game</title>
+<style>
+  body {
+    margin: 0; font-family: Arial, sans-serif;
+    background: #111; color: #eee;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh;
+  }
+  #loginScreen, #mainApp {
+    background: #222;
+    padding: 20px 30px;
+    border-radius: 10px;
+    width: 320px;
+    box-sizing: border-box;
+  }
+  #loginScreen { display: none; }
+  #mainApp { display: none; }
+  .visible { display: block; }
+  input, button {
+    width: 100%; padding: 10px;
+    margin: 10px 0;
+    font-size: 16px;
+    border-radius: 5px;
+    border: none;
+  }
+  button {
+    background: #e91e63;
+    color: white;
+    cursor: pointer;
+  }
+  button:disabled {
+    background: #888;
+    cursor: not-allowed;
+  }
+  h2 { margin: 0 0 15px 0; text-align: center; }
+  #wallet { font-size: 18px; margin-bottom: 10px; text-align:center; }
+  #withdrawFeed {
+    background: #333;
+    height: 30px;
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 30px;
+    text-align: center;
+    margin-bottom: 20px;
+    border-radius: 5px;
+  }
+  .wheel-container {
+    position: relative;
+    margin: 0 auto 15px auto;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    border: 8px solid #e91e63;
+    overflow: hidden;
+    box-shadow: 0 0 15px #e91e63;
+  }
+  .wheel {
+    width: 100%;
+    height: 100%;
+    transition: transform 4s cubic-bezier(0.33, 1, 0.68, 1);
+    border-radius: 50%;
+    position: relative;
+  }
+  .wheel-slice {
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    top: 50%;
+    left: 50%;
+    transform-origin: 0% 0%;
+    color: #fff;
+    font-weight: bold;
+    font-size: 14px;
+    text-align: right;
+    padding-right: 8px;
+    box-sizing: border-box;
+  }
+  .wheel-slice:nth-child(odd) { background: #e91e63; }
+  .wheel-slice:nth-child(even) { background: #3f51b5; }
+  .pointer {
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-bottom: 30px solid #e91e63;
+    position: absolute;
+    top: -30px;
+    left: calc(50% - 20px);
+    z-index: 10;
+  }
+  #spinBtn {
+    width: 100%;
+    padding: 12px;
+    font-size: 18px;
+    background: #4caf50;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    color: white;
+  }
+  #spinBtn:disabled {
+    background: #666;
+    cursor: not-allowed;
+  }
+  .message {
+    text-align: center;
+    margin: 10px 0;
+    font-weight: bold;
+    min-height: 24px;
+  }
+</style>
 </head>
 <body>
 
-<div id="loginScreen">
-  <h2>Login to Spin & Win</h2>
-  <input type="text" id="username" placeholder="Enter your name" />
-  <button onclick="login()">Enter</button>
+<div id="loginScreen" class="visible">
+  <h2>Login or Register</h2>
+  <input type="text" id="usernameInput" placeholder="Enter username" autocomplete="off" />
+  <button id="loginBtn">Login / Register</button>
+  <div class="message" id="loginMessage"></div>
+</div>
+
+<div id="mainApp">
+  <h2>Welcome, <span id="userDisplay"></span> 🎉</h2>
+  <div id="wallet">Wallet Balance: ₹<span id="balance">0</span></div>
+  <button id="addCashBtn">Add Cash</button>
+  
+  <div id="withdrawFeed">Loading live withdrawal feed...</div>
+  
+  <div class="wheel-container">
+    <div class="pointer"></div>
+    <div class="wheel" id="wheel"></div>
+  </div>
+  
+  <button id="spinBtn">SPIN</button>
+  
+  <div class="message" id="resultMessage"></div>
+  
+  <button id="logoutBtn" style="margin-top:20px; background:#f44336;">Logout</button>
 </div>
 
 <script>
-  function login() {
-    const name = document.getElementById('username').value.trim();
-    if (!name) return alert('Please enter your name.');
-    alert('Welcome ' + name);
-  }
-</script>
+(() => {
+  // Elements
+  const loginScreen = document.getElementById('loginScreen');
+  const mainApp = document.getElementById('mainApp');
+  const usernameInput = document.getElementById('usernameInput');
+  const loginBtn = document.getElementById('loginBtn');
+  const loginMessage = document.getElementById('loginMessage');
+  const userDisplay = document.getElementById('userDisplay');
+  const balanceSpan = document.getElementById('balance');
+  const addCashBtn = document.getElementById('addCashBtn');
+  const withdrawFeed = document.getElementById('withdrawFeed');
+  const wheel = document.getElementById('wheel');
+  const spinBtn = document.getElementById('spinBtn');
+  const resultMessage = document.getElementById('resultMessage');
+  const logoutBtn = document.getElementById('logoutBtn');
 
-</body>
-</html>
+  // Wheel prizes
+  const prizes = ['₹100', '₹250', '₹0', '₹500', 'Try Again', '₹1000'];
+  const sliceCount = prizes.length;
+  const sliceDeg = 360 / sliceCount;
+
+  // State
+  let currentUser = null;
+  let spinning = false;
+  let withdrawInterval = null;
+
+  // --- LocalStorage helpers ---
+  function saveUsers(users) {
+    localStorage.setItem('spinwin_users', JSON.stringify(users));
+  }
+  function loadUsers() {
+    const users = localStorage.getItem('spinwin_users');
+    return users ? JSON.parse(users) : {};
+  }
+  function saveCurrentUser(name) {
+    localStorage.setItem('spinwin_currentUser', name);
+  }
+  function loadCurrentUser() {
+    return localStorage.getItem('spinwin_currentUser');
+  }
+
+  // --- User / wallet functions ---
+  function getWallet(user) {
+    const users = loadUsers();
+    return users[user]?.balance || 0;
+  }
+  function setWallet(user, amount) {
+    const users = loadUsers();
+    if (!users[user]) users[user] = {balance: 0};
+    users[user].balance = amount;
+    saveUsers(users);
+  }
+
+  // --- UI update ---
+  function updateBalanceUI() {
+    balanceSpan.textContent = getWallet(currentUser);
+  }
+
+  function showLogin() {
+    loginScreen.classList.add('visible');
+    mainApp.classList.remove('visible');
+    loginMessage.textContent = '';
+    usernameInput.value = '';
+  }
+
+  function showMain() {
+    loginScreen.classList.remove('visible');
+    mainApp.classList.add('visible');
+    userDisplay.textContent = currentUser;
+    updateBalanceUI();
+    resultMessage.textContent = '';
+    spinBtn.disabled = false;
+  }
+
+  // --- Login/Register ---
+  loginBtn.onclick = () => {
+    const name = usernameInput.value.trim();
+    if (!name) {
+      loginMessage.textContent = 'Please enter a username.';
+      return;
+    }
+    let users = loadUsers();
+    if (!users[name]) {
+      // Register new user with 0 balance
+      users[name] = {balance: 0};
+      saveUsers(users);
+      loginMessage.textContent = 'New account created!';
+    } else {
+      loginMessage.textContent = 'Logged in successfully!';
+    }
+    currentUser = name;
+    saveCurrentUser(currentUser);
+    setTimeout(() => {
+      showMain();
+      startWithdrawFeed();
+    }, 600);
+  };
+
+  // --- Add Cash ---
+  addCashBtn.onclick = () => {
+    let wallet = getWallet(currentUser);
+    const amount = Math.floor(Math.random() * 1000) + 500; // 500 to 1499
+    wallet += amount;
+    setWallet(currentUser, wallet);
+    updateBalanceUI();
+    resultMessage.textContent = `₹${amount} added to your wallet!`;
+  };
+
+  // --- Spin Wheel Setup ---
+  function createWheel() {
+    wheel.innerHTML = '';
+    for (let i = 0; i < sliceCount; i++) {
+      const slice = document.createElement('div');
+      slice.className = 'wheel-slice';
+      slice.style.transform = `rotate(${i * sliceDeg}deg) skewY(-${90 - sliceDeg}deg)`;
+      slice.style.background = i % 2 === 0 ? '#e91e63' : '#3f51b5';
+      slice.textContent = prizes[i];
+      wheel.appendChild(slice);
+    }
+  }
+
+  // --- Spin Wheel ---
+  spinBtn.onclick = () => {
+    if (spinning) return;
+    spinning = true;
+    resultMessage.textContent = '';
+    spinBtn.disabled = true;
+
+    // Spin degrees: 5 full spins + random slice offset
+    const spins = 5;
+    const randSlice = Math.floor(Math.random() * sliceCount);
+    const finalDegree = spins * 360 + randSlice * sliceDeg + sliceDeg / 2;
+
+    wheel.style.transition = 'transform 4s cubic-bezier(0.33, 1, 0.68, 1)';
+    wheel.style.transform = `rotate(${finalDegree}deg)`;
+
+    setTimeout(() => {
+      wheel.style.transition = 'none';
+      const normalizedDeg = finalDegree % 360;
+      wheel.style.transform = `rotate(${normalizedDeg}deg)`;
+
+      const prizeIndex = sliceCount - 1 - Math.floor(normalizedDeg / sliceDeg);
+      const prize = prizes[prizeIndex >= 0 ? prizeIndex : 0];
+
+      if (prize.startsWith('₹')) {
+        const amount = parseInt(prize.replace(/[^\d]/g, ''));
+        let wallet = getWallet(currentUser);
+        wallet += amount;
+        setWallet(currentUser, wallet);
+        updateBalanceUI();
+        resultMessage.textContent = `Congratulations! You won ${prize}`;
+      } else {
+        resultMessage.textContent = prize;
+      }
+      spinning = false;
+      spinBtn.disabled = false;
+    }, 4000);
+  };
+
+  // --- Withdrawal Feed ---
+  const feedUsers = ['Amit', 'Sneha', 'Ravi', 'Priya', 'Karan', 'Neha', 'Rahul
+  
