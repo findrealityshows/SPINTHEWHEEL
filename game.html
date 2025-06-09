@@ -2,172 +2,135 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Wheel Game</title>
   <style>
     body {
+      margin: 0;
       font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
       text-align: center;
       padding: 20px;
-      background: #f0f0f0;
     }
-    h2 {
-      margin-bottom: 5px;
-    }
-    #wheel {
-      width: 200px;
-      height: 200px;
-      border: 10px solid #007bff;
+
+    .wheel-container {
+      margin: 30px auto;
+      width: 250px;
+      height: 250px;
       border-radius: 50%;
-      margin: 20px auto;
+      border: 8px solid #333;
+      background: conic-gradient(
+        #2ecc71 0% 33%, 
+        #e74c3c 33% 66%, 
+        #f1c40f 66% 100%
+      );
       position: relative;
-      transition: transform 4s ease;
+      transition: transform 4s ease-out;
     }
-    #pointer {
-      width: 0; 
-      height: 0; 
+
+    .pointer {
+      width: 0; height: 0;
       border-left: 20px solid transparent;
       border-right: 20px solid transparent;
-      border-bottom: 30px solid red;
-      position: absolute;
-      top: -40px;
-      left: 80px;
+      border-bottom: 30px solid white;
+      margin: 0 auto;
+      position: relative;
+      top: -20px;
     }
-    button {
-      padding: 12px 20px;
-      margin: 10px;
-      font-size: 16px;
+
+    .slider-container {
+      margin: 30px auto;
+      width: 90%;
+      max-width: 300px;
+    }
+
+    .spin-button {
+      font-size: 20px;
+      padding: 12px 30px;
+      background: yellow;
       border: none;
-      border-radius: 5px;
-      background: #007bff;
-      color: white;
-      cursor: pointer;
+      border-radius: 30px;
+      color: black;
+      font-weight: bold;
+      margin: 15px auto;
+      box-shadow: 0 0 15px yellow;
     }
-    button:hover {
-      background: #0056b3;
-    }
-    #balance {
+
+    .amount-display {
       font-size: 18px;
       margin: 10px 0;
     }
-    #feed {
-      background: white;
-      padding: 10px;
-      height: 100px;
-      overflow-y: auto;
-      border: 1px solid #ccc;
+
+    .balance-display {
       margin-top: 20px;
+      font-size: 16px;
+      color: #aaa;
     }
-    #dailyRewardArea button:disabled {
-      background: gray;
-      cursor: not-allowed;
+
+    .win-message {
+      font-size: 22px;
+      font-weight: bold;
+      margin-top: 15px;
+      color: #2ecc71;
     }
   </style>
 </head>
 <body>
 
-<h2>Welcome, <span id="userEmail"></span></h2>
-<div id="balance">Balance: ₹<span id="cash">0</span></div>
+  <h2>Spin the Wheel</h2>
+  <div class="pointer"></div>
+  <div class="wheel-container" id="wheel"></div>
 
-<div id="dailyRewardArea">
-  <button id="dailyRewardBtn" onclick="claimDailyReward()">Claim Daily Reward</button>
-</div>
+  <div class="slider-container">
+    <div class="amount-display">Bet: <span id="betAmount">100</span> DMO</div>
+    <input type="range" min="50" max="1000" step="50" value="100" id="betSlider" style="width:100%;">
+  </div>
 
-<div id="wheel">
-  <div id="pointer"></div>
-</div>
-<button onclick="spin()">Spin Wheel</button>
-<button onclick="addCash()">Add ₹50</button>
-<button onclick="logout()">Logout</button>
+  <button class="spin-button" onclick="spin()">SPIN</button>
+  <div class="win-message" id="winMessage"></div>
+  <div class="balance-display">Balance: <span id="balance">10000</span> DMO</div>
 
-<h3>Live Withdrawal Feed</h3>
-<div id="feed"></div>
+  <script>
+    let balance = 10000;
+    let wheel = document.getElementById('wheel');
+    let winMessage = document.getElementById('winMessage');
+    let balanceDisplay = document.getElementById('balance');
+    let betSlider = document.getElementById('betSlider');
+    let betAmountText = document.getElementById('betAmount');
 
-<script>
-  // Restrict to mobile users
-  function isMobilePhone() {
-    return /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  }
-  if (!isMobilePhone()) {
-    alert("🚫 This site only works on mobile.");
-    document.body.innerHTML = "<h2 style='text-align:center;color:red'>🚫 Only for mobile devices.</h2>";
-    throw new Error("Not mobile");
-  }
+    betSlider.addEventListener('input', () => {
+      betAmountText.textContent = betSlider.value;
+    });
 
-  // Session check
-  const user = localStorage.getItem("loggedInUser");
-  if (!user) {
-    window.location.href = "index.html";
-  } else {
-    document.getElementById("userEmail").textContent = user;
-  }
+    function spin() {
+      const bet = parseInt(betSlider.value);
+      if (balance < bet) {
+        alert("Not enough balance!");
+        return;
+      }
 
-  // Balance setup
-  let cash = parseInt(localStorage.getItem(user + "_cash")) || 0;
-  document.getElementById("cash").textContent = cash;
+      let rotation = Math.floor(Math.random() * 360) + 720;
+      wheel.style.transform = `rotate(${rotation}deg)`;
 
-  function updateCash(amount) {
-    cash += amount;
-    localStorage.setItem(user + "_cash", cash);
-    document.getElementById("cash").textContent = cash;
-  }
+      setTimeout(() => {
+        const finalDeg = rotation % 360;
+        let win = 0;
 
-  function spin() {
-    const wheel = document.getElementById("wheel");
-    const degree = Math.floor(Math.random() * 3600) + 720;
-    wheel.style.transform = `rotate(${degree}deg)`;
+        if (finalDeg < 120) {
+          win = bet * 2; // green
+        } else if (finalDeg < 240) {
+          win = 0; // red
+        } else {
+          win = bet * 1.5; // yellow
+        }
 
-    setTimeout(() => {
-      const winAmount = [0, 10, 20, 50, 100][Math.floor(Math.random() * 5)];
-      updateCash(winAmount);
-      alert("You won ₹" + winAmount + "!");
-      addToFeed(user + " won ₹" + winAmount);
-    }, 4000);
-  }
-
-  function addCash() {
-    updateCash(50);
-    addToFeed(user + " added ₹50");
-  }
-
-  function logout() {
-    localStorage.removeItem("loggedInUser");
-    window.location.href = "index.html";
-  }
-
-  function addToFeed(msg) {
-    const feed = document.getElementById("feed");
-    const p = document.createElement("p");
-    p.textContent = msg;
-    feed.prepend(p);
-  }
-
-  // Daily Reward System
-  function claimDailyReward() {
-    const today = new Date().toDateString();
-    const lastClaim = localStorage.getItem(user + "_lastDaily");
-
-    if (lastClaim === today) {
-      alert("You already claimed today's reward.");
-    } else {
-      updateCash(30);
-      alert("You've received ₹30 daily reward!");
-      localStorage.setItem(user + "_lastDaily", today);
-      addToFeed(user + " claimed daily reward");
-      document.getElementById("dailyRewardBtn").disabled = true;
+        balance = balance - bet + win;
+        balanceDisplay.textContent = balance.toFixed(2);
+        winMessage.textContent = win > 0 ? `You won ${win.toFixed(2)} DMO!` : "Better luck next time!";
+      }, 4000);
     }
-  }
-
-  function checkDailyButton() {
-    const today = new Date().toDateString();
-    const lastClaim = localStorage.getItem(user + "_lastDaily");
-    if (lastClaim === today) {
-      document.getElementById("dailyRewardBtn").disabled = true;
-    }
-  }
-
-  checkDailyButton();
-</script>
+  </script>
 
 </body>
 </html>
