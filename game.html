@@ -1,15 +1,109 @@
+<!-- game.html -->
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Game Page</title>
+  <title>Wheel Game</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 </head>
-<body style="background-color: black; color: white; font-family: sans-serif;">
-  <h1>Welcome, <span id="name"></span>!</h1>
-  <p>This is your game dashboard.</p>
+<body>
 
-  <script>
-    const user = localStorage.getItem("username");
-    document.getElementById("name").innerText = user ? user : "Player";
-  </script>
+<h2>Wheel Game</h2>
+<button id="spinBtn">Spin Wheel</button>
+<p id="prizeMsg"></p>
+
+<h2>Add Cash</h2>
+<input id="cashAmount" placeholder="Amount" type="number" />
+<button onclick="addCash()">Add Cash</button>
+
+<h2>Live Withdrawal Feed</h2>
+<ul id="withdrawalFeed"></ul>
+
+<script>
+  // Firebase config (same as in index.html)
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    // etc.
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  let currentUser = null;
+
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      currentUser = user;
+      listenWithdrawals();
+    } else {
+      alert('Please login first');
+      window.location.href = 'index.html';
+    }
+  });
+
+  const prizes = [10, 20, 50, 100];
+
+  document.getElementById('spinBtn').onclick = () => {
+    const prize = prizes[Math.floor(Math.random() * prizes.length)];
+    document.getElementById('prizeMsg').innerText = `You won $${prize}!`;
+
+    // Update user's cash in Firestore
+    const userRef = db.collection('users').doc(currentUser.uid);
+    userRef.get().then(doc => {
+      const currentCash = doc.exists ? doc.data().cash || 0 : 0;
+      userRef.set({ cash: currentCash + prize }, { merge: true });
+    });
+  };
+
+  function addCash() {
+    const amount = parseInt(document.getElementById('cashAmount').value);
+    if (!amount || amount <= 0) return alert('Enter valid amount');
+    const userRef = db.collection('users').doc(currentUser.uid);
+    userRef.get().then(doc => {
+      const currentCash = doc.exists ? doc.data().cash || 0 : 0;
+      userRef.set({ cash: currentCash + amount }, { merge: true });
+      alert(`Added $${amount}`);
+    });
+  }
+
+  function listenWithdrawals() {
+    db.collection('withdrawals').orderBy('timestamp', 'desc').limit(10)
+      .onSnapshot(snapshot => {
+        const feed = document.getElementById('withdrawalFeed');
+        feed.innerHTML = '';
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const li = document.createElement('li');
+          li.textContent = `${data.userEmail} withdrew $${data.amount}`;
+          feed.appendChild(li);
+        });
+      });
+  }
+
+  // Example withdrawal function (call this when user wants to withdraw)
+  // Make sure user has enough cash before withdrawing!
+  async function withdraw(amount) {
+    if (amount <= 0) return alert('Invalid amount');
+    const userRef = db.collection('users').doc(currentUser.uid);
+    const userDoc = await userRef.get();
+    const cash = userDoc.exists ? userDoc.data().cash || 0 : 0;
+    if (cash < amount) return alert('Insufficient balance');
+
+    await userRef.set({ cash: cash - amount }, { merge: true });
+    await db.collection('withdrawals').add({
+      userId: currentUser.uid,
+      userEmail: currentUser.email,
+      amount: amount,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    alert(`Withdrew $${amount}`);
+  }
+</script>
+
 </body>
 </html>
