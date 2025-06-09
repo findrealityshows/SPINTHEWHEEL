@@ -7,21 +7,21 @@
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 20px;
-      max-width: 400px;
-      margin: auto;
       background: #f0f0f0;
-    }
-    h2 {
+      padding: 20px;
       text-align: center;
     }
+    h2 {
+      margin-bottom: 10px;
+    }
     input, button {
-      width: 100%;
       padding: 12px;
-      margin: 10px 0;
-      font-size: 16px;
+      margin: 8px 0;
+      width: 90%;
+      max-width: 300px;
       border-radius: 5px;
       border: 1px solid #ccc;
+      font-size: 16px;
     }
     button {
       background-color: #007bff;
@@ -31,68 +31,54 @@
     button:hover {
       background-color: #0056b3;
     }
-    #mobileOnlyMessage {
-      display: none;
-      color: red;
-      text-align: center;
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      display: inline-block;
+      margin-top: 50px;
     }
   </style>
 </head>
 <body>
 
-<div id="mobileOnlyMessage">🚫 Only accessible on mobile phones.</div>
-
-<div id="mainContent">
-  <h2>Login</h2>
-  <input type="email" id="loginEmail" placeholder="Email" />
-  <input type="password" id="loginPassword" placeholder="Password" />
-  <button onclick="login()">Login</button>
-
-  <h2>Signup</h2>
-  <input type="email" id="signupEmail" placeholder="Email" />
-  <input type="password" id="signupPassword" placeholder="Password" />
+<div class="container">
+  <h2>Login / Signup</h2>
+  <input type="email" id="email" placeholder="Enter Email" required><br>
+  <input type="password" id="password" placeholder="Enter Password" required><br>
   <button onclick="signup()">Sign Up</button>
+  <button onclick="login()">Login</button>
 </div>
 
 <script>
-  function isMobilePhone() {
-    return /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  }
-
-  window.onload = function() {
-    if (!isMobilePhone()) {
-      document.getElementById('mainContent').style.display = 'none';
-      document.getElementById('mobileOnlyMessage').style.display = 'block';
-    }
-  };
-
   function signup() {
-    const email = document.getElementById('signupEmail').value.trim();
-    const password = document.getElementById('signupPassword').value;
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
     if (!email || !password) {
-      alert("Please enter both email and password.");
+      alert("Please fill all fields.");
       return;
     }
-    if (localStorage.getItem(email)) {
-      alert("User already exists. Please login.");
-      return;
+
+    if (localStorage.getItem("user_" + email)) {
+      alert("User already exists. Try logging in.");
+    } else {
+      localStorage.setItem("user_" + email, password);
+      alert("Signup successful! You can now log in.");
     }
-    localStorage.setItem(email, password);
-    alert("Signup successful! You can now login.");
-    document.getElementById('signupEmail').value = '';
-    document.getElementById('signupPassword').value = '';
   }
 
   function login() {
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    const storedPassword = localStorage.getItem(email);
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    const storedPassword = localStorage.getItem("user_" + email);
+
     if (storedPassword === password) {
-      alert("Login successful!");
-      localStorage.setItem("loggedInUser", email); // Track current user
+      localStorage.setItem("loggedInUser", email);
       window.location.href = "game.html";
     } else {
-      alert("Invalid credentials. Try again or sign up.");
+      alert("Invalid email or password.");
     }
   }
 </script>
