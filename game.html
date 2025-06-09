@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RollX Game</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&family=Rajdhani:wght@500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet" />
   <style>
     body {
       margin: 0;
-      font-family: 'Rajdhani', sans-serif;
+      font-family: 'Orbitron', sans-serif;
       background: #0d0d0d;
       color: white;
       display: flex;
@@ -22,7 +22,7 @@
       justify-content: space-between;
       width: 100%;
       padding: 10px 20px;
-      font-size: 16px;
+      font-size: 14px;
       background: #1a1a1a;
     }
     .online {
@@ -31,24 +31,42 @@
     .wheel-container {
       position: relative;
       margin-top: 20px;
+      width: 300px;
+      height: 300px;
     }
     .wheel {
       width: 300px;
       height: 300px;
       border-radius: 50%;
-      background: conic-gradient(#00cc66 0deg 60deg, #000 60deg 360deg);
+      background: conic-gradient(#00cc66 0deg 180deg, #000 180deg 360deg);
       transition: transform 3s ease-out;
+      position: relative;
+      overflow: visible;
+    }
+    .wheel-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 26px;
+      font-weight: bold;
+      color: white;
+      pointer-events: none;
+      user-select: none;
+      white-space: nowrap;
     }
     .indicator {
       width: 0;
       height: 0;
-      border-left: 20px solid transparent;
-      border-right: 20px solid transparent;
-      border-bottom: 20px solid white;
+      border-left: 15px solid transparent;
+      border-right: 15px solid transparent;
+      border-top: 20px solid white;
       position: absolute;
-      top: -20px;
+      top: -25px;
       left: 50%;
       transform: translateX(-50%);
+      z-index: 10;
+      filter: drop-shadow(0 0 3px white);
     }
     .controls {
       margin-top: 20px;
@@ -56,6 +74,7 @@
       flex-direction: column;
       align-items: center;
       width: 90%;
+      max-width: 400px;
     }
     .slider-group {
       width: 100%;
@@ -63,9 +82,55 @@
     }
     input[type="range"] {
       width: 100%;
+      -webkit-appearance: none;
+      background: #222;
+      height: 8px;
+      border-radius: 5px;
+      outline: none;
     }
-    .spin-btn, .stop-btn {
-      padding: 15px 30px;
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      background: #00cc66;
+      cursor: pointer;
+      border-radius: 50%;
+      border: none;
+      margin-top: -5px;
+      transition: background 0.3s ease;
+    }
+    input[type="range"]:active::-webkit-slider-thumb {
+      background: #99ffcc;
+    }
+    .bet-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 5px;
+    }
+    .bet-btn {
+      background: #00cc66;
+      border: none;
+      border-radius: 5px;
+      color: black;
+      font-weight: bold;
+      font-size: 20px;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 0 8px #00cc66;
+      transition: background 0.3s ease;
+    }
+    .bet-btn:active {
+      background: #99ffcc;
+    }
+    .spin-stop-group {
+      margin-top: 10px;
+    }
+    button.spin-btn, button.stop-btn {
+      padding: 15px 40px;
       font-size: 20px;
       background: linear-gradient(#ccff00, #00cc66);
       border: none;
@@ -74,29 +139,18 @@
       color: black;
       font-weight: bold;
       cursor: pointer;
-      margin: 5px;
+      user-select: none;
+      margin: 0 10px;
+    }
+    button.stop-btn {
+      background: linear-gradient(#ff3300, #cc0000);
+      box-shadow: 0 0 10px #ff3300;
+      display: none;
     }
     .balance {
-      margin-top: 10px;
+      margin-top: 15px;
       font-size: 16px;
       color: #ccc;
-    }
-    .bet-control {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      margin-top: 10px;
-    }
-    .btn-small {
-      padding: 5px 10px;
-      font-size: 18px;
-      font-weight: bold;
-      background: #00cc66;
-      border: none;
-      border-radius: 5px;
-      color: black;
-      cursor: pointer;
     }
   </style>
 </head>
@@ -105,25 +159,34 @@
     <div>RollX</div>
     <div class="online">Online: <span id="onlineCount">1000</span></div>
   </div>
+
   <div class="wheel-container">
     <div class="indicator"></div>
-    <div id="wheel" class="wheel"></div>
+    <div id="wheel" class="wheel">
+      <div id="wheelCenterText" class="wheel-text">+0</div>
+    </div>
   </div>
+
   <div class="controls">
     <div class="slider-group">
       <label>Multiplier (<span id="multiplierVal">1.0</span>x)</label>
-      <input type="range" min="1" max="5" step="0.1" value="1" id="multiplierSlider">
+      <input type="range" min="1" max="5" step="0.1" value="1" id="multiplierSlider" />
     </div>
+
     <div class="slider-group">
       <label>Bet Amount (<span id="betVal">10</span> DMO)</label>
-      <input type="range" min="10" max="100" step="10" value="10" id="betSlider">
-      <div class="bet-control">
-        <button class="btn-small" onclick="adjustBet(-10)">-</button>
-        <button class="btn-small" onclick="adjustBet(10)">+</button>
+      <input type="range" min="10" max="100" step="1" value="10" id="betSlider" />
+      <div class="bet-buttons">
+        <button class="bet-btn" id="betMinus">−</button>
+        <button class="bet-btn" id="betPlus">+</button>
       </div>
     </div>
-    <button class="spin-btn" onclick="spinWheel()" id="spinBtn">SPIN</button>
-    <button class="stop-btn" onclick="stopSpin()" id="stopBtn" style="display:none;">STOP</button>
+
+    <div class="spin-stop-group">
+      <button class="spin-btn" id="spinBtn">SPIN</button>
+      <button class="stop-btn" id="stopBtn">STOP</button>
+    </div>
+
     <div class="balance">BALANCE: <span id="balance">10000</span> DMO</div>
   </div>
 
@@ -135,108 +198,164 @@
     const multiplierVal = document.getElementById('multiplierVal');
     const betVal = document.getElementById('betVal');
     const onlineCount = document.getElementById('onlineCount');
+    const wheelText = document.getElementById('wheelCenterText');
     const spinBtn = document.getElementById('spinBtn');
     const stopBtn = document.getElementById('stopBtn');
+    const betMinus = document.getElementById('betMinus');
+    const betPlus = document.getElementById('betPlus');
 
     let balance = 10000;
     let spinning = false;
-    let spinInterval;
     let currentRotation = 0;
-
-    let lockedMultiplier = 1;
+    let spinInterval = null;
     let lockedBet = 10;
+    let lockedMultiplier = 1.0;
 
+    // Update online users count randomly
+    setInterval(() => {
+      let online = parseInt(onlineCount.innerText);
+      online += Math.random() > 0.5 ? 1 : -1;
+      if (online < 900) online = 900;
+      if (online > 1100) online = 1100;
+      onlineCount.innerText = online;
+    }, 1000);
+
+    // Update multiplier slider UI and wheel segment
     multiplierSlider.addEventListener('input', () => {
       const val = parseFloat(multiplierSlider.value).toFixed(1);
       multiplierVal.innerText = val;
       updateWheelSegment(val);
+      updateProjectedWin();
     });
 
+    // Update bet slider UI
     betSlider.addEventListener('input', () => {
       betVal.innerText = betSlider.value;
+      updateProjectedWin();
     });
 
-    function adjustBet(amount) {
-      let bet = parseInt(betSlider.value);
-      bet += amount;
-      if (bet < 10) bet = 10;
-      if (bet > 100) bet = 100;
-      betSlider.value = bet;
-      betVal.innerText = bet;
-    }
+    // Bet plus/minus buttons
+    betMinus.addEventListener('click', () => {
+      let val = parseInt(betSlider.value);
+      val = Math.max(10, val - 1);
+      betSlider.value = val;
+      betVal.innerText = val;
+      updateProjectedWin();
+    });
+    betPlus.addEventListener('click', () => {
+      let val = parseInt(betSlider.value);
+      val = Math.min(100, val + 1);
+      betSlider.value = val;
+      betVal.innerText = val;
+      updateProjectedWin();
+    });
 
     function updateWheelSegment(multiplier) {
       const degree = Math.max(20, 180 / multiplier);
       wheel.style.background = `conic-gradient(#00cc66 0deg ${degree}deg, #000 ${degree}deg 360deg)`;
     }
 
-    function spinWheel() {
+    function updateProjectedWin() {
+      const bet = parseInt(betSlider.value);
+      const multiplier = parseFloat(multiplierSlider.value);
+      const win = (bet * multiplier).toFixed(2);
+      wheelText.innerText = `+${win} DMO`;
+    }
+
+    updateWheelSegment(multiplierSlider.value);
+    updateProjectedWin();
+
+    // Spin function
+    spinBtn.addEventListener('click', () => {
       if (spinning) return;
 
-      lockedMultiplier = parseFloat(multiplierSlider.value);
-      lockedBet = parseInt(betSlider.value);
+      const bet = parseInt(betSlider.value);
+      const multiplier = parseFloat(multiplierSlider.value);
 
-      if (balance < lockedBet) {
+      if (balance < bet) {
         alert('Insufficient Balance!');
         return;
       }
 
-      balance -= lockedBet;
+      lockedBet = bet;
+      lockedMultiplier = multiplier;
+
+      balance -= bet;
       balanceEl.innerText = balance.toFixed(2);
 
+      spinning = true;
       spinBtn.style.display = 'none';
       stopBtn.style.display = 'inline-block';
-      spinning = true;
+
+      wheelText.innerText = 'SPINNING...';
+
+      // Spin variables
+      let speed = 20 + Math.random() * 10; // degrees per frame approx
+      let decelerate = false;
 
       spinInterval = setInterval(() => {
-        currentRotation = (currentRotation + 5) % 360;
+        currentRotation += speed;
+        currentRotation %= 360;
         wheel.style.transform = `rotate(${currentRotation}deg)`;
-      }, 16);
-    }
 
-    function stopSpin() {
+        if (decelerate) {
+          speed -= 0.5;
+          if (speed <= 0) {
+            clearInterval(spinInterval);
+            finishSpin();
+          }
+        }
+      }, 16);
+
+      // Automatically decelerate after 2.5 seconds if user doesn't stop
+      setTimeout(() => {
+        if (spinning) {
+          decelerate = true;
+        }
+      }, 2500);
+    });
+
+    // Stop spin button: stop immediately with short easing animation
+    stopBtn.addEventListener('click', () => {
       if (!spinning) return;
 
       spinning = false;
       clearInterval(spinInterval);
 
-      const winDegree = Math.max(20, 180 / lockedMultiplier);
-      const stopOffset = Math.random() * 360;
+      // Add a small finishing spin to look natural
+      const stopOffset = Math.random() * 30;
+      const finalRotation = currentRotation + stopOffset;
 
-      const finalRotation = currentRotation + (360 - currentRotation % 360) + stopOffset + 720;
-
-      wheel.style.transition = 'transform 3s ease-out';
+      wheel.style.transition = 'transform 0.5s ease-out';
       wheel.style.transform = `rotate(${finalRotation}deg)`;
 
       wheel.addEventListener('transitionend', () => {
         wheel.style.transition = '';
         currentRotation = finalRotation % 360;
-
-        const landedAngle = currentRotation % 360;
-
-        if (landedAngle <= winDegree) {
-          const winAmount = lockedBet * lockedMultiplier;
-          balance += winAmount;
-          alert(`🎉 You Win: ${winAmount.toFixed(2)} DMO`);
-        } else {
-          alert('💥 You Lost');
-        }
-
-        balanceEl.innerText = balance.toFixed(2);
-        spinBtn.style.display = 'inline-block';
-        stopBtn.style.display = 'none';
+        finishSpin();
       }, { once: true });
+
+      spinBtn.style.display = 'inline-block';
+      stopBtn.style.display = 'none';
+    });
+
+    // Calculate and show result
+    function finishSpin() {
+      const winDegree = Math.max(20, 180 / lockedMultiplier);
+      const landedAngle = currentRotation % 360;
+
+      if (landedAngle <= winDegree) {
+        const winAmount = lockedBet * lockedMultiplier;
+        balance += winAmount;
+        wheelText.innerText = `+${winAmount.toFixed(2)} DMO`;
+        alert(`🎉 You Win: ${winAmount.toFixed(2)} DMO`);
+      } else {
+        wheelText.innerText = 'Lost';
+        alert('💥 You Lost');
+      }
+
+      balanceEl.innerText = balance.toFixed(2);
     }
-
-    setInterval(() => {
-      let online = parseInt(onlineCount.innerText);
-      online += Math.random() > 0.5 ? 1 : -1;
-      online = Math.min(Math.max(900, online), 1100);
-      onlineCount.innerText = online;
-    }, 1000);
-
-    // Initial setup
-    updateWheelSegment(parseFloat(multiplierSlider.value));
   </script>
 </body>
 </html>
