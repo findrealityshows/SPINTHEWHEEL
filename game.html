@@ -1,35 +1,116 @@
-<!-- game.html -->
 <!DOCTYPE html>
 <html>
 <head>
   <title>Wheel Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 400px;
+      margin: auto;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    button, input {
+      width: 100%;
+      padding: 12px 10px;
+      margin-bottom: 20px;
+      font-size: 16px;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    input {
+      border: 1px solid #ccc;
+    }
+    #prizeMsg {
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 25px;
+      min-height: 28px;
+      color: #006400;
+    }
+    #withdrawalFeed {
+      list-style: none;
+      padding-left: 0;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 5px;
+    }
+    #withdrawalFeed li {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+      color: #555;
+    }
+    #mobileOnlyMessage {
+      display: none;
+      color: red;
+      font-weight: bold;
+      text-align: center;
+      margin-top: 50px;
+    }
+  </style>
 </head>
 <body>
 
-<h2>Wheel Game</h2>
-<button id="spinBtn">Spin Wheel</button>
-<p id="prizeMsg"></p>
+<div id="mobileOnlyMessage">🚫 Sorry, this site works only on mobile phones.</div>
 
-<h2>Add Cash</h2>
-<input id="cashAmount" placeholder="Amount" type="number" />
-<button onclick="addCash()">Add Cash</button>
+<div id="mainContent">
 
-<h2>Live Withdrawal Feed</h2>
-<ul id="withdrawalFeed"></ul>
+  <h2>Wheel Game</h2>
+  <button id="spinBtn">Spin Wheel</button>
+  <p id="prizeMsg"></p>
+
+  <h2>Add Cash</h2>
+  <input id="cashAmount" placeholder="Amount" type="number" min="1" />
+  <button onclick="addCash()">Add Cash</button>
+
+  <h2>Live Withdrawal Feed</h2>
+  <ul id="withdrawalFeed"></ul>
+
+  <button onclick="logout()" style="background:#dc3545; margin-top:30px;">Logout</button>
+</div>
 
 <script>
-  // Firebase config (same as in index.html)
+  // Mobile detection function
+  function isMobilePhone() {
+    return /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  }
+
+  window.onload = function() {
+    if (!isMobilePhone()) {
+      document.getElementById('mainContent').style.display = 'none';
+      document.getElementById('mobileOnlyMessage').style.display = 'block';
+    }
+  };
+
+  // Firebase config (replace with yours)
   const firebaseConfig = {
     apiKey: "YOUR_API_KEY",
     authDomain: "YOUR_AUTH_DOMAIN",
     projectId: "YOUR_PROJECT_ID",
-    // etc.
   };
 
-  // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
@@ -40,6 +121,7 @@
     if (user) {
       currentUser = user;
       listenWithdrawals();
+      loadUserCash();
     } else {
       alert('Please login first');
       window.location.href = 'index.html';
@@ -52,7 +134,6 @@
     const prize = prizes[Math.floor(Math.random() * prizes.length)];
     document.getElementById('prizeMsg').innerText = `You won $${prize}!`;
 
-    // Update user's cash in Firestore
     const userRef = db.collection('users').doc(currentUser.uid);
     userRef.get().then(doc => {
       const currentCash = doc.exists ? doc.data().cash || 0 : 0;
@@ -62,12 +143,16 @@
 
   function addCash() {
     const amount = parseInt(document.getElementById('cashAmount').value);
-    if (!amount || amount <= 0) return alert('Enter valid amount');
+    if (!amount || amount <= 0) {
+      alert('Enter valid amount');
+      return;
+    }
     const userRef = db.collection('users').doc(currentUser.uid);
     userRef.get().then(doc => {
       const currentCash = doc.exists ? doc.data().cash || 0 : 0;
       userRef.set({ cash: currentCash + amount }, { merge: true });
       alert(`Added $${amount}`);
+      document.getElementById('cashAmount').value = '';
     });
   }
 
@@ -85,15 +170,18 @@
       });
   }
 
-  // Example withdrawal function (call this when user wants to withdraw)
-  // Make sure user has enough cash before withdrawing!
   async function withdraw(amount) {
-    if (amount <= 0) return alert('Invalid amount');
+    if (amount <= 0) {
+      alert('Invalid amount');
+      return;
+    }
     const userRef = db.collection('users').doc(currentUser.uid);
     const userDoc = await userRef.get();
     const cash = userDoc.exists ? userDoc.data().cash || 0 : 0;
-    if (cash < amount) return alert('Insufficient balance');
-
+    if (cash < amount) {
+      alert('Insufficient balance');
+      return;
+    }
     await userRef.set({ cash: cash - amount }, { merge: true });
     await db.collection('withdrawals').add({
       userId: currentUser.uid,
@@ -102,6 +190,17 @@
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
     alert(`Withdrew $${amount}`);
+  }
+
+  function logout() {
+    auth.signOut().then(() => {
+      window.location.href = 'index.html';
+    });
+  }
+
+  // Optional: load user's cash if you want to display it somewhere
+  function loadUserCash() {
+    // You can add code here to show user's cash balance on page
   }
 </script>
 
