@@ -11,6 +11,9 @@
       padding: 20px;
       background: #f0f0f0;
     }
+    h2 {
+      margin-bottom: 5px;
+    }
     #wheel {
       width: 200px;
       height: 200px;
@@ -38,21 +41,26 @@
       border-radius: 5px;
       background: #007bff;
       color: white;
+      cursor: pointer;
     }
     button:hover {
       background: #0056b3;
     }
     #balance {
-      margin: 10px 0;
       font-size: 18px;
+      margin: 10px 0;
     }
     #feed {
       background: white;
       padding: 10px;
       height: 100px;
-      overflow: auto;
+      overflow-y: auto;
       border: 1px solid #ccc;
       margin-top: 20px;
+    }
+    #dailyRewardArea button:disabled {
+      background: gray;
+      cursor: not-allowed;
     }
   </style>
 </head>
@@ -60,6 +68,10 @@
 
 <h2>Welcome, <span id="userEmail"></span></h2>
 <div id="balance">Balance: ₹<span id="cash">0</span></div>
+
+<div id="dailyRewardArea">
+  <button id="dailyRewardBtn" onclick="claimDailyReward()">Claim Daily Reward</button>
+</div>
 
 <div id="wheel">
   <div id="pointer"></div>
@@ -72,6 +84,17 @@
 <div id="feed"></div>
 
 <script>
+  // Restrict to mobile users
+  function isMobilePhone() {
+    return /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  }
+  if (!isMobilePhone()) {
+    alert("🚫 This site only works on mobile.");
+    document.body.innerHTML = "<h2 style='text-align:center;color:red'>🚫 Only for mobile devices.</h2>";
+    throw new Error("Not mobile");
+  }
+
+  // Session check
   const user = localStorage.getItem("loggedInUser");
   if (!user) {
     window.location.href = "index.html";
@@ -79,6 +102,7 @@
     document.getElementById("userEmail").textContent = user;
   }
 
+  // Balance setup
   let cash = parseInt(localStorage.getItem(user + "_cash")) || 0;
   document.getElementById("cash").textContent = cash;
 
@@ -106,6 +130,11 @@
     addToFeed(user + " added ₹50");
   }
 
+  function logout() {
+    localStorage.removeItem("loggedInUser");
+    window.location.href = "index.html";
+  }
+
   function addToFeed(msg) {
     const feed = document.getElementById("feed");
     const p = document.createElement("p");
@@ -113,10 +142,31 @@
     feed.prepend(p);
   }
 
-  function logout() {
-    localStorage.removeItem("loggedInUser");
-    window.location.href = "index.html";
+  // Daily Reward System
+  function claimDailyReward() {
+    const today = new Date().toDateString();
+    const lastClaim = localStorage.getItem(user + "_lastDaily");
+
+    if (lastClaim === today) {
+      alert("You already claimed today's reward.");
+    } else {
+      updateCash(30);
+      alert("You've received ₹30 daily reward!");
+      localStorage.setItem(user + "_lastDaily", today);
+      addToFeed(user + " claimed daily reward");
+      document.getElementById("dailyRewardBtn").disabled = true;
+    }
   }
+
+  function checkDailyButton() {
+    const today = new Date().toDateString();
+    const lastClaim = localStorage.getItem(user + "_lastDaily");
+    if (lastClaim === today) {
+      document.getElementById("dailyRewardBtn").disabled = true;
+    }
+  }
+
+  checkDailyButton();
 </script>
 
 </body>
