@@ -1,206 +1,121 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Wheel Game</title>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <title>Wheel Game</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      padding: 20px;
-      max-width: 400px;
-      margin: auto;
-      background: #f9f9f9;
-      color: #333;
-    }
-    h2 {
       text-align: center;
-      margin-bottom: 15px;
+      padding: 20px;
+      background: #f0f0f0;
     }
-    button, input {
-      width: 100%;
-      padding: 12px 10px;
-      margin-bottom: 20px;
-      font-size: 16px;
-      border-radius: 5px;
-      box-sizing: border-box;
+    #wheel {
+      width: 200px;
+      height: 200px;
+      border: 10px solid #007bff;
+      border-radius: 50%;
+      margin: 20px auto;
+      position: relative;
+      transition: transform 4s ease;
+    }
+    #pointer {
+      width: 0; 
+      height: 0; 
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-bottom: 30px solid red;
+      position: absolute;
+      top: -40px;
+      left: 80px;
     }
     button {
-      background-color: #007bff;
-      color: white;
+      padding: 12px 20px;
+      margin: 10px;
+      font-size: 16px;
       border: none;
-      cursor: pointer;
+      border-radius: 5px;
+      background: #007bff;
+      color: white;
     }
     button:hover {
-      background-color: #0056b3;
+      background: #0056b3;
     }
-    input {
-      border: 1px solid #ccc;
-    }
-    #prizeMsg {
+    #balance {
+      margin: 10px 0;
       font-size: 18px;
-      font-weight: bold;
-      text-align: center;
-      margin-bottom: 25px;
-      min-height: 28px;
-      color: #006400;
     }
-    #withdrawalFeed {
-      list-style: none;
-      padding-left: 0;
-      max-height: 200px;
-      overflow-y: auto;
-      border: 1px solid #ddd;
+    #feed {
       background: white;
-      border-radius: 5px;
-    }
-    #withdrawalFeed li {
       padding: 10px;
-      border-bottom: 1px solid #eee;
-      font-size: 14px;
-      color: #555;
-    }
-    #mobileOnlyMessage {
-      display: none;
-      color: red;
-      font-weight: bold;
-      text-align: center;
-      margin-top: 50px;
+      height: 100px;
+      overflow: auto;
+      border: 1px solid #ccc;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
 
-<div id="mobileOnlyMessage">🚫 Sorry, this site works only on mobile phones.</div>
+<h2>Welcome, <span id="userEmail"></span></h2>
+<div id="balance">Balance: ₹<span id="cash">0</span></div>
 
-<div id="mainContent">
-
-  <h2>Wheel Game</h2>
-  <button id="spinBtn">Spin Wheel</button>
-  <p id="prizeMsg"></p>
-
-  <h2>Add Cash</h2>
-  <input id="cashAmount" placeholder="Amount" type="number" min="1" />
-  <button onclick="addCash()">Add Cash</button>
-
-  <h2>Live Withdrawal Feed</h2>
-  <ul id="withdrawalFeed"></ul>
-
-  <button onclick="logout()" style="background:#dc3545; margin-top:30px;">Logout</button>
+<div id="wheel">
+  <div id="pointer"></div>
 </div>
+<button onclick="spin()">Spin Wheel</button>
+<button onclick="addCash()">Add ₹50</button>
+<button onclick="logout()">Logout</button>
+
+<h3>Live Withdrawal Feed</h3>
+<div id="feed"></div>
 
 <script>
-  // Mobile detection function
-  function isMobilePhone() {
-    return /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const user = localStorage.getItem("loggedInUser");
+  if (!user) {
+    window.location.href = "index.html";
+  } else {
+    document.getElementById("userEmail").textContent = user;
   }
 
-  window.onload = function() {
-    if (!isMobilePhone()) {
-      document.getElementById('mainContent').style.display = 'none';
-      document.getElementById('mobileOnlyMessage').style.display = 'block';
-    }
-  };
+  let cash = parseInt(localStorage.getItem(user + "_cash")) || 0;
+  document.getElementById("cash").textContent = cash;
 
-  // Firebase config (replace with yours)
-  const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-  };
+  function updateCash(amount) {
+    cash += amount;
+    localStorage.setItem(user + "_cash", cash);
+    document.getElementById("cash").textContent = cash;
+  }
 
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
+  function spin() {
+    const wheel = document.getElementById("wheel");
+    const degree = Math.floor(Math.random() * 3600) + 720;
+    wheel.style.transform = `rotate(${degree}deg)`;
 
-  let currentUser = null;
-
-  auth.onAuthStateChanged(user => {
-    if (user) {
-      currentUser = user;
-      listenWithdrawals();
-      loadUserCash();
-    } else {
-      alert('Please login first');
-      window.location.href = 'index.html';
-    }
-  });
-
-  const prizes = [10, 20, 50, 100];
-
-  document.getElementById('spinBtn').onclick = () => {
-    const prize = prizes[Math.floor(Math.random() * prizes.length)];
-    document.getElementById('prizeMsg').innerText = `You won $${prize}!`;
-
-    const userRef = db.collection('users').doc(currentUser.uid);
-    userRef.get().then(doc => {
-      const currentCash = doc.exists ? doc.data().cash || 0 : 0;
-      userRef.set({ cash: currentCash + prize }, { merge: true });
-    });
-  };
+    setTimeout(() => {
+      const winAmount = [0, 10, 20, 50, 100][Math.floor(Math.random() * 5)];
+      updateCash(winAmount);
+      alert("You won ₹" + winAmount + "!");
+      addToFeed(user + " won ₹" + winAmount);
+    }, 4000);
+  }
 
   function addCash() {
-    const amount = parseInt(document.getElementById('cashAmount').value);
-    if (!amount || amount <= 0) {
-      alert('Enter valid amount');
-      return;
-    }
-    const userRef = db.collection('users').doc(currentUser.uid);
-    userRef.get().then(doc => {
-      const currentCash = doc.exists ? doc.data().cash || 0 : 0;
-      userRef.set({ cash: currentCash + amount }, { merge: true });
-      alert(`Added $${amount}`);
-      document.getElementById('cashAmount').value = '';
-    });
+    updateCash(50);
+    addToFeed(user + " added ₹50");
   }
 
-  function listenWithdrawals() {
-    db.collection('withdrawals').orderBy('timestamp', 'desc').limit(10)
-      .onSnapshot(snapshot => {
-        const feed = document.getElementById('withdrawalFeed');
-        feed.innerHTML = '';
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const li = document.createElement('li');
-          li.textContent = `${data.userEmail} withdrew $${data.amount}`;
-          feed.appendChild(li);
-        });
-      });
-  }
-
-  async function withdraw(amount) {
-    if (amount <= 0) {
-      alert('Invalid amount');
-      return;
-    }
-    const userRef = db.collection('users').doc(currentUser.uid);
-    const userDoc = await userRef.get();
-    const cash = userDoc.exists ? userDoc.data().cash || 0 : 0;
-    if (cash < amount) {
-      alert('Insufficient balance');
-      return;
-    }
-    await userRef.set({ cash: cash - amount }, { merge: true });
-    await db.collection('withdrawals').add({
-      userId: currentUser.uid,
-      userEmail: currentUser.email,
-      amount: amount,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    alert(`Withdrew $${amount}`);
+  function addToFeed(msg) {
+    const feed = document.getElementById("feed");
+    const p = document.createElement("p");
+    p.textContent = msg;
+    feed.prepend(p);
   }
 
   function logout() {
-    auth.signOut().then(() => {
-      window.location.href = 'index.html';
-    });
-  }
-
-  // Optional: load user's cash if you want to display it somewhere
-  function loadUserCash() {
-    // You can add code here to show user's cash balance on page
+    localStorage.removeItem("loggedInUser");
+    window.location.href = "index.html";
   }
 </script>
 
