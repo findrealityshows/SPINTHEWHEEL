@@ -140,7 +140,11 @@
 
     let balance = 10000;
     let spinning = false;
+    let spinInterval;
     let currentRotation = 0;
+
+    let lockedMultiplier = 1;
+    let lockedBet = 10;
 
     multiplierSlider.addEventListener('input', () => {
       const val = parseFloat(multiplierSlider.value).toFixed(1);
@@ -166,84 +170,72 @@
       wheel.style.background = `conic-gradient(#00cc66 0deg ${degree}deg, #000 ${degree}deg 360deg)`;
     }
 
-    function calculateWinDegree(multiplier) {
-      return Math.max(20, 180 / multiplier);
+    function spinWheel() {
+      if (spinning) return;
+
+      lockedMultiplier = parseFloat(multiplierSlider.value);
+      lockedBet = parseInt(betSlider.value);
+
+      if (balance < lockedBet) {
+        alert('Insufficient Balance!');
+        return;
+      }
+
+      balance -= lockedBet;
+      balanceEl.innerText = balance.toFixed(2);
+
+      spinBtn.style.display = 'none';
+      stopBtn.style.display = 'inline-block';
+      spinning = true;
+
+      spinInterval = setInterval(() => {
+        currentRotation = (currentRotation + 5) % 360;
+        wheel.style.transform = `rotate(${currentRotation}deg)`;
+      }, 16);
+    }
+
+    function stopSpin() {
+      if (!spinning) return;
+
+      spinning = false;
+      clearInterval(spinInterval);
+
+      const winDegree = Math.max(20, 180 / lockedMultiplier);
+      const stopOffset = Math.random() * 360;
+
+      const finalRotation = currentRotation + (360 - currentRotation % 360) + stopOffset + 720;
+
+      wheel.style.transition = 'transform 3s ease-out';
+      wheel.style.transform = `rotate(${finalRotation}deg)`;
+
+      wheel.addEventListener('transitionend', () => {
+        wheel.style.transition = '';
+        currentRotation = finalRotation % 360;
+
+        const landedAngle = currentRotation % 360;
+
+        if (landedAngle <= winDegree) {
+          const winAmount = lockedBet * lockedMultiplier;
+          balance += winAmount;
+          alert(`🎉 You Win: ${winAmount.toFixed(2)} DMO`);
+        } else {
+          alert('💥 You Lost');
+        }
+
+        balanceEl.innerText = balance.toFixed(2);
+        spinBtn.style.display = 'inline-block';
+        stopBtn.style.display = 'none';
+      }, { once: true });
     }
 
     setInterval(() => {
       let online = parseInt(onlineCount.innerText);
       online += Math.random() > 0.5 ? 1 : -1;
-      if (online < 900) online = 900;
-      if (online > 1100) online = 1100;
+      online = Math.min(Math.max(900, online), 1100);
       onlineCount.innerText = online;
     }, 1000);
 
-    function spinWheel() {
-      if (spinning) return;
-
-      const bet = parseInt(betSlider.value);
-      const multiplier = parseFloat(multiplierSlider.value);
-
-      if (balance < bet) {
-        alert('Insufficient Balance!');
-        return;
-      }
-
-      balance -= bet;
-      balanceEl.innerText = balance.toFixed(2);
-
-      spinning = true;
-      spinBtn.style.display = 'none';
-      stopBtn.style.display = 'inline-block';
-
-      let spinSpeed = 5;
-      function animateSpin() {
-        if (!spinning) return;
-        currentRotation = (currentRotation + spinSpeed) % 360;
-        wheel.style.transform = `rotate(${currentRotation}deg)`;
-        requestAnimationFrame(animateSpin);
-      }
-
-      animateSpin();
-    }
-
-    function stopSpin() {
-      if (!spinning) return;
-      spinning = false;
-
-      const multiplier = parseFloat(multiplierSlider.value);
-      const bet = parseInt(betSlider.value);
-      const winDegree = calculateWinDegree(multiplier);
-
-      const finalOffset = Math.random() * winDegree;
-      const targetRotation = currentRotation + (360 - (currentRotation % 360)) + finalOffset + 720;
-
-      wheel.style.transition = 'transform 3s ease-out';
-      wheel.style.transform = `rotate(${targetRotation}deg)`;
-
-      wheel.addEventListener(
-        'transitionend',
-        () => {
-          wheel.style.transition = '';
-          currentRotation = targetRotation % 360;
-
-          if (currentRotation >= 0 && currentRotation <= winDegree) {
-            const winAmount = bet * multiplier;
-            alert(`🎉 You Win: ${winAmount.toFixed(2)} DMO`);
-            balance += winAmount;
-          } else {
-            alert('💥 You Lost');
-          }
-
-          balanceEl.innerText = balance.toFixed(2);
-          spinBtn.style.display = 'inline-block';
-          stopBtn.style.display = 'none';
-        },
-        { once: true }
-      );
-    }
-
-    // Initial call
+    // Initial setup
     updateWheelSegment(parseFloat(multiplierSlider.value));
   </script>
 </body>
