@@ -2,135 +2,157 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Wheel Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spin to Win</title>
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #111;
+      padding: 0;
+      background: #0b0b0b;
+      font-family: 'Segoe UI', sans-serif;
       color: white;
-      text-align: center;
-      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
     }
 
     .wheel-container {
-      margin: 30px auto;
-      width: 250px;
-      height: 250px;
-      border-radius: 50%;
-      border: 8px solid #333;
-      background: conic-gradient(
-        #2ecc71 0% 33%, 
-        #e74c3c 33% 66%, 
-        #f1c40f 66% 100%
-      );
       position: relative;
-      transition: transform 4s ease-out;
+      width: 300px;
+      height: 300px;
+      margin-top: 40px;
+    }
+
+    .wheel {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: conic-gradient(
+        #2ecc71 0deg 90deg,
+        #000 90deg 360deg
+      );
+      transition: transform 0.3s ease-out;
     }
 
     .pointer {
-      width: 0; height: 0;
+      position: absolute;
+      top: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
       border-left: 20px solid transparent;
       border-right: 20px solid transparent;
-      border-bottom: 30px solid white;
-      margin: 0 auto;
-      position: relative;
-      top: -20px;
-    }
-
-    .slider-container {
-      margin: 30px auto;
-      width: 90%;
-      max-width: 300px;
+      border-bottom: 30px solid yellow;
+      z-index: 2;
     }
 
     .spin-button {
+      margin-top: 30px;
+      padding: 15px 40px;
       font-size: 20px;
-      padding: 12px 30px;
-      background: yellow;
+      background: #ffea00;
       border: none;
       border-radius: 30px;
       color: black;
       font-weight: bold;
-      margin: 15px auto;
-      box-shadow: 0 0 15px yellow;
+      box-shadow: 0 0 15px #ffea00;
+      cursor: pointer;
     }
 
-    .amount-display {
-      font-size: 18px;
-      margin: 10px 0;
-    }
-
-    .balance-display {
+    .bet-section {
       margin-top: 20px;
-      font-size: 16px;
-      color: #aaa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
-    .win-message {
-      font-size: 22px;
+    .bet-value {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    input[type="range"] {
+      width: 200px;
+    }
+
+    .result-message {
+      margin-top: 20px;
+      font-size: 18px;
       font-weight: bold;
-      margin-top: 15px;
-      color: #2ecc71;
     }
   </style>
 </head>
 <body>
-
-  <h2>Spin the Wheel</h2>
-  <div class="pointer"></div>
-  <div class="wheel-container" id="wheel"></div>
-
-  <div class="slider-container">
-    <div class="amount-display">Bet: <span id="betAmount">100</span> DMO</div>
-    <input type="range" min="50" max="1000" step="50" value="100" id="betSlider" style="width:100%;">
+  <div class="wheel-container">
+    <div class="pointer"></div>
+    <div class="wheel" id="wheel"></div>
   </div>
 
-  <button class="spin-button" onclick="spin()">SPIN</button>
-  <div class="win-message" id="winMessage"></div>
-  <div class="balance-display">Balance: <span id="balance">10000</span> DMO</div>
+  <div class="bet-section">
+    <div class="bet-value">Bet Amount: ₹<span id="betAmount">10</span></div>
+    <input type="range" min="10" max="40" step="10" value="10" id="betSlider" />
+  </div>
+
+  <button class="spin-button" id="spinButton">SPIN</button>
+
+  <div class="result-message" id="resultMessage"></div>
 
   <script>
-    let balance = 10000;
-    let wheel = document.getElementById('wheel');
-    let winMessage = document.getElementById('winMessage');
-    let balanceDisplay = document.getElementById('balance');
-    let betSlider = document.getElementById('betSlider');
-    let betAmountText = document.getElementById('betAmount');
+    const wheel = document.getElementById('wheel');
+    const spinButton = document.getElementById('spinButton');
+    const betSlider = document.getElementById('betSlider');
+    const betAmountText = document.getElementById('betAmount');
+    const resultMessage = document.getElementById('resultMessage');
+
+    let isSpinning = false;
+    let currentRotation = 0;
+    let spinInterval;
 
     betSlider.addEventListener('input', () => {
       betAmountText.textContent = betSlider.value;
+      updateWheelSector(betSlider.value);
     });
 
-    function spin() {
-      const bet = parseInt(betSlider.value);
-      if (balance < bet) {
-        alert("Not enough balance!");
-        return;
-      }
-
-      let rotation = Math.floor(Math.random() * 360) + 720;
-      wheel.style.transform = `rotate(${rotation}deg)`;
-
-      setTimeout(() => {
-        const finalDeg = rotation % 360;
-        let win = 0;
-
-        if (finalDeg < 120) {
-          win = bet * 2; // green
-        } else if (finalDeg < 240) {
-          win = 0; // red
-        } else {
-          win = bet * 1.5; // yellow
-        }
-
-        balance = balance - bet + win;
-        balanceDisplay.textContent = balance.toFixed(2);
-        winMessage.textContent = win > 0 ? `You won ${win.toFixed(2)} DMO!` : "Better luck next time!";
-      }, 4000);
+    function updateWheelSector(bet) {
+      let angle = 90 - (bet - 10) * 2.25; // 90 at ₹10, down to ~45 at ₹40
+      wheel.style.background = `conic-gradient(
+        #2ecc71 0deg ${angle}deg,
+        #000 ${angle}deg 360deg
+      )`;
     }
-  </script>
 
+    function startSpinning() {
+      spinInterval = setInterval(() => {
+        currentRotation += 10;
+        wheel.style.transform = `rotate(${currentRotation}deg)`;
+      }, 30);
+    }
+
+    function stopSpinning() {
+      clearInterval(spinInterval);
+      const stopAngle = currentRotation % 360;
+      const greenLimit = 90 - (betSlider.value - 10) * 2.25;
+      resultMessage.textContent = stopAngle <= greenLimit ? "🎉 You Win!" : "❌ Try Again";
+      spinButton.textContent = "SPIN";
+      isSpinning = false;
+    }
+
+    spinButton.addEventListener('click', () => {
+      if (!isSpinning) {
+        isSpinning = true;
+        resultMessage.textContent = "";
+        spinButton.textContent = "STOP";
+        startSpinning();
+      } else {
+        stopSpinning();
+      }
+    });
+
+    // Initial green size setup
+    updateWheelSector(betSlider.value);
+  </script>
 </body>
 </html>
