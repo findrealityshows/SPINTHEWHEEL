@@ -1,34 +1,90 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html>
 <head>
   <title>Login / Signup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 400px;
+      margin: auto;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    input {
+      width: 100%;
+      padding: 12px 10px;
+      margin: 8px 0 15px 0;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      background-color: #007bff;
+      color: white;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-bottom: 30px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #mobileOnlyMessage {
+      display: none;
+      color: red;
+      font-weight: bold;
+      text-align: center;
+      margin-top: 50px;
+    }
+  </style>
 </head>
 <body>
 
-<h2>Login</h2>
-<input id="loginEmail" placeholder="Email" />
-<input id="loginPassword" type="password" placeholder="Password" />
-<button onclick="login()">Login</button>
+<div id="mobileOnlyMessage">🚫 Sorry, this site works only on mobile phones.</div>
 
-<h2>Signup</h2>
-<input id="signupEmail" placeholder="Email" />
-<input id="signupPassword" type="password" placeholder="Password" />
-<button onclick="signup()">Sign Up</button>
+<div id="mainContent">
+  <h2>Login</h2>
+  <input id="loginEmail" type="email" placeholder="Email" required />
+  <input id="loginPassword" type="password" placeholder="Password" required />
+  <button onclick="login()">Login</button>
+
+  <h2>Signup</h2>
+  <input id="signupEmail" type="email" placeholder="Email" required />
+  <input id="signupPassword" type="password" placeholder="Password" required />
+  <button onclick="signup()">Sign Up</button>
+</div>
 
 <script>
-  // Your Firebase config
+  function isMobilePhone() {
+    return /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  }
+
+  window.onload = function() {
+    if (!isMobilePhone()) {
+      document.getElementById('mainContent').style.display = 'none';
+      document.getElementById('mobileOnlyMessage').style.display = 'block';
+    }
+  };
+
   const firebaseConfig = {
     apiKey: "YOUR_API_KEY",
     authDomain: "YOUR_AUTH_DOMAIN",
     projectId: "YOUR_PROJECT_ID",
-    // etc.
   };
 
-  // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
   const db = firebase.firestore();
@@ -39,21 +95,15 @@
     auth.signInWithEmailAndPassword(email, password)
       .then(() => {
         alert('Logged in!');
-        window.location.href = 'game.html'; // go to game page
+        window.location.href = 'game.html';
       })
-      .catch(e => alert(e.message));
+      .catch(e => alert('Login error: ' + e.message));
   }
 
   function signup() {
     const email = document.getElementById('signupEmail').value;
     const password = document.getElementById('signupPassword').value;
     auth.createUserWithEmailAndPassword(email, password)
-      .then(() => {
-        alert('User created! You can login now.');
-      })
-      .catch(e => alert(e.message));
-  }
-</script>
-
-</body>
-</html>
+      .then(() => alert('User created! Please login now.'))
+      .catch(e => alert('Signup error: '
+  
